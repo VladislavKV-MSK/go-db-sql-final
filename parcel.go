@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 )
 
 type ParcelStore struct {
@@ -65,6 +64,10 @@ func (s ParcelStore) GetByClient(client int) ([]Parcel, error) {
 		}
 		res = append(res, p)
 	}
+	err = rows.Err()
+	if err != nil {
+		return res, err
+	}
 
 	return res, nil
 }
@@ -80,37 +83,18 @@ func (s ParcelStore) SetStatus(number int, status string) error {
 func (s ParcelStore) SetAddress(number int, address string) error {
 	// реализуйте обновление адреса в таблице parcel
 	// менять адрес можно только если значение статуса registered
-	status := ""
-	row := s.db.QueryRow("SELECT status FROM parcel WHERE number = :number", sql.Named("number", number))
-	err := row.Scan(&status)
-	if err != nil {
-		return err
-	}
-	if status != ParcelStatusRegistered {
-		return fmt.Errorf("impossible, parcel status %s", status)
-	}
-
-	//меняем адрес
-	_, err = s.db.Exec("UPDATE parcel SET address = :address WHERE number = :number",
+	_, err := s.db.Exec("UPDATE parcel SET address = :address WHERE number = :number AND status = :status",
 		sql.Named("number", number),
-		sql.Named("address", address))
+		sql.Named("address", address),
+		sql.Named("status", ParcelStatusRegistered))
 	return err
 }
 
 func (s ParcelStore) Delete(number int) error {
 	// реализуйте удаление строки из таблицы parcel
 	// удалять строку можно только если значение статуса registered
-	status := ""
-	row := s.db.QueryRow("SELECT status FROM parcel WHERE number = :number", sql.Named("number", number))
-	err := row.Scan(&status)
-	if err != nil {
-		return err
-	}
-	if status != ParcelStatusRegistered {
-		return fmt.Errorf("невозможно удалить, посылка № %d имеет статус %s", number, status)
-	}
-
-	//удаляем
-	_, err = s.db.Exec("DELETE FROM parcel WHERE number = :number", sql.Named("number", number))
+	_, err := s.db.Exec("DELETE FROM parcel WHERE number = :number AND status = :status",
+		sql.Named("number", number),
+		sql.Named("status", ParcelStatusRegistered))
 	return err
 }
